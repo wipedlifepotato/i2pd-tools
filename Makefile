@@ -11,40 +11,46 @@ CXXFLAGS := -Wall -std=c++17 -O2
 INCFLAGS := -I$(LIBI2PD_PATH) -I$(LIBI2PD_CLIENT_PATH)
 DEFINES := -DOPENSSL_SUPPRESS_DEPRECATED
 
-LDFLAGS := 
+LDFLAGS :=
 BOOST_SUFFIX :=
 LDLIBS := $(I2PD_PATH)/$(I2PD_LIB) -lboost_program_options$(BOOST_SUFFIX) -lssl -lcrypto -lz
 
+# -------------------------
+# Platform-specific settings
+# -------------------------
 ifeq ($(UNAME),Linux)
-    CXXFLAGS += -g
-    LDLIBS += -lrt -lpthread
+	CXXFLAGS += -g
+	LDLIBS += -lrt -lpthread
+
 else ifeq ($(UNAME),Darwin)
-    CXXFLAGS += -g
-    LDLIBS += -lpthread
+	CXXFLAGS += -g
+	LDLIBS += -lpthread
 
-    ifeq ($(shell test -d /opt/homebrew && echo "true"),true)
-        BREW_PREFIX := /opt/homebrew
-    else
-        BREW_PREFIX := /usr/local
-    endif
+	# Определяем архитектуру: Apple Silicon (brew в /opt/homebrew) или Intel (brew в /usr/local)
+	ifeq ($(shell test -d /opt/homebrew && echo "true"),true)
+		BREW_PREFIX := /opt/homebrew
+	else
+		BREW_PREFIX := /usr/local
+	endif
 
-    INCFLAGS += -I$(BREW_PREFIX)/include -I$(BREW_PREFIX)/opt/openssl@3/include
-    LDFLAGS += -L$(BREW_PREFIX)/lib -L$(BREW_PREFIX)/opt/openssl@3/lib
+	INCFLAGS += -I$(BREW_PREFIX)/include -I$(BREW_PREFIX)/opt/openssl@3/include
+	LDFLAGS += -L$(BREW_PREFIX)/lib -L$(BREW_PREFIX)/opt/openssl@3/lib
+	LDLIBS += -lboost_program_options
 
-    LDLIBS += -lboost_program_options
 else ifeq ($(UNAME),FreeBSD)
-    CXXFLAGS += -g
-    LDLIBS += -lthr -lpthread
-    LDFLAGS += -L/usr/local/lib
-    INCFLAGS += -I/usr/local/include
+	CXXFLAGS += -g
+	LDLIBS += -lthr -lpthread
+	LDFLAGS += -L/usr/local/lib
+	INCFLAGS += -I/usr/local/include
+
 else
-    # Windows
-    CXXFLAGS += -Os -fPIC -msse
-    DEFINES += -DWIN32_LEAN_AND_MEAN
-    LDFLAGS += -L/mingw64/lib
-    INCFLAGS += -I/mingw64/include
-    BOOST_SUFFIX = -mt
-    LDLIBS += -lwsock32 -lws2_32 -liphlpapi -lpthread -lboost_filesystem$(BOOST_SUFFIX)
+	# Windows (MSYS2 / MinGW / CLANG64)
+	CXXFLAGS += -Os -fPIC -msse
+	DEFINES += -DWIN32_LEAN_AND_MEAN
+	LDFLAGS += -L/mingw64/lib
+	INCFLAGS += -I/mingw64/include
+	BOOST_SUFFIX = -mt
+	LDLIBS += -lwsock32 -lws2_32 -liphlpapi -lpthread -lboost_filesystem$(BOOST_SUFFIX)
 endif
 
 # -------------------------
@@ -53,46 +59,46 @@ endif
 all: $(I2PD_LIB) vain keygen keyinfo famtool routerinfo regaddr regaddr_3ld i2pbase64 offlinekeys b33address regaddralias x25519 verifyhost autoconf
 
 vain: vain.o $(I2PD_LIB)
-	$(CXX) -o vain $(LDFLAGS) vain.o $(LDLIBS)
+	$(CXX) -o $@ $(LDFLAGS) $< $(LDLIBS)
 
 autoconf: autoconf.o $(I2PD_LIB)
-	$(CXX) -o autoconf $(DEFINES) $(LDFLAGS) autoconf.o $(LDLIBS)
+	$(CXX) -o $@ $(DEFINES) $(LDFLAGS) $< $(LDLIBS)
 
 routerinfo: routerinfo.o $(I2PD_LIB)
-	$(CXX) -o routerinfo $(LDFLAGS) routerinfo.o $(LDLIBS)
+	$(CXX) -o $@ $(LDFLAGS) $< $(LDLIBS)
 
 keygen: keygen.o $(I2PD_LIB)
-	$(CXX) -o keygen $(DEFINES) $(LDFLAGS) keygen.o $(LDLIBS)
+	$(CXX) -o $@ $(DEFINES) $(LDFLAGS) $< $(LDLIBS)
 
 keyinfo: keyinfo.o $(I2PD_LIB)
-	$(CXX) -o keyinfo $(DEFINES) $(LDFLAGS) keyinfo.o $(LDLIBS)
+	$(CXX) -o $@ $(DEFINES) $(LDFLAGS) $< $(LDLIBS)
 
 famtool: famtool.o $(I2PD_LIB)
-	$(CXX) -o famtool $(DEFINES) $(LDFLAGS) famtool.o $(LDLIBS)
+	$(CXX) -o $@ $(DEFINES) $(LDFLAGS) $< $(LDLIBS)
 
 regaddr: regaddr.o $(I2PD_LIB)
-	$(CXX) -o regaddr $(DEFINES) $(LDFLAGS) regaddr.o $(LDLIBS)
+	$(CXX) -o $@ $(DEFINES) $(LDFLAGS) $< $(LDLIBS)
 
 regaddr_3ld: regaddr_3ld.o $(I2PD_LIB)
-	$(CXX) -o regaddr_3ld $(DEFINES) $(LDFLAGS) regaddr_3ld.o $(LDLIBS)
+	$(CXX) -o $@ $(DEFINES) $(LDFLAGS) $< $(LDLIBS)
 
 i2pbase64: i2pbase64.o $(I2PD_LIB)
-	$(CXX) -o i2pbase64 $(DEFINES) $(LDFLAGS) i2pbase64.o $(LDLIBS)
+	$(CXX) -o $@ $(DEFINES) $(LDFLAGS) $< $(LDLIBS)
 
 offlinekeys: offlinekeys.o $(I2PD_LIB)
-	$(CXX) -o offlinekeys $(DEFINES) $(LDFLAGS) offlinekeys.o $(LDLIBS)
+	$(CXX) -o $@ $(DEFINES) $(LDFLAGS) $< $(LDLIBS)
 
 b33address: b33address.o $(I2PD_LIB)
-	$(CXX) -o b33address $(DEFINES) $(LDFLAGS) b33address.o $(LDLIBS)
+	$(CXX) -o $@ $(DEFINES) $(LDFLAGS) $< $(LDLIBS)
 
 regaddralias: regaddralias.o $(I2PD_LIB)
-	$(CXX) -o regaddralias $(DEFINES) $(LDFLAGS) regaddralias.o $(LDLIBS)
+	$(CXX) -o $@ $(DEFINES) $(LDFLAGS) $< $(LDLIBS)
 
 x25519: x25519.o $(I2PD_LIB)
-	$(CXX) -o x25519 $(DEFINES) $(LDFLAGS) x25519.o $(LDLIBS)
+	$(CXX) -o $@ $(DEFINES) $(LDFLAGS) $< $(LDLIBS)
 
 verifyhost: verifyhost.o $(I2PD_LIB)
-	$(CXX) -o verifyhost $(DEFINES) $(LDFLAGS) verifyhost.o $(LDLIBS)
+	$(CXX) -o $@ $(DEFINES) $(LDFLAGS) $< $(LDLIBS)
 
 # -------------------------
 # Object compilation
@@ -130,4 +136,3 @@ clean-bin:
 clean: clean-i2pd clean-obj clean-bin
 
 .PHONY: all count clean-i2pd clean-obj clean-bin clean
-

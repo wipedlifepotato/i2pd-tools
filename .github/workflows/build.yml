@@ -13,12 +13,11 @@ on:
         default: 'gcc'
         type: choice
         options:
-        - gcc
-        - clang
+          - gcc
+          - clang
 
 env:
-  # Увеличиваем таймаут для сборки
-  MAKEFLAGS: -j2
+  MAKEFLAGS: -j2  # ускоряем сборку
 
 jobs:
   build-windows:
@@ -34,54 +33,53 @@ jobs:
           - compiler: clang
             toolchain: clang64
             package_prefix: mingw-w64-clang-x86_64
-    
+
     steps:
-    - name: 📥 Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-        fetch-depth: 0
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
 
-    - name: 🔧 Setup MSYS2
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: ${{ matrix.toolchain }}
-        install: |
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm base-devel ${{ matrix.package_prefix }}-toolchain
-          pacman -S --noconfirm ${{ matrix.package_prefix }}-boost
-          pacman -S --noconfirm ${{ matrix.package_prefix }}-openssl
-          pacman -S --noconfirm ${{ matrix.package_prefix }}-zlib
-          pacman -S --noconfirm make
+      - name: 🔧 Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.toolchain }}
+          install: >-
+            base-devel
+            ${{ matrix.package_prefix }}-toolchain
+            ${{ matrix.package_prefix }}-boost
+            ${{ matrix.package_prefix }}-openssl
+            ${{ matrix.package_prefix }}-zlib
+            make
 
-    - name: 🧹 Clean previous build
-      shell: msys2 {0}
-      run: |
-        make clean || true
+      - name: 🧹 Clean previous build
+        shell: msys2 {0}
+        run: make clean || true
 
-    - name: 🔨 Build with ${{ matrix.compiler }}
-      shell: msys2 {0}
-      run: |
-        if [ "${{ matrix.compiler }}" = "clang" ]; then
-          make CXX=clang++
-        else
-          make CXX=g++
-        fi
+      - name: 🔨 Build with ${{ matrix.compiler }}
+        shell: msys2 {0}
+        run: |
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            make CXX=clang++
+          else
+            make CXX=g++
+          fi
 
-    - name: 📊 Count built tools
-      shell: msys2 {0}
-      run: |
-        echo "=== Built tools ==="
-        ls -la *.exe
-        echo "Total tools: $(ls -1 *.exe | wc -l)"
+      - name: 📊 Count built tools
+        shell: msys2 {0}
+        run: |
+          echo "=== Built tools ==="
+          ls -la *.exe
+          echo "Total tools: $(ls -1 *.exe | wc -l)"
 
-    - name: 📦 Archive Windows artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: i2pd-tools-windows-${{ matrix.compiler }}
-        path: |
-          *.exe
-        retention-days: 30
+      - name: 📦 Archive Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: i2pd-tools-windows-${{ matrix.compiler }}
+          path: |
+            *.exe
+          retention-days: 30
 
   build-linux:
     name: 🐧 Linux Build
@@ -94,54 +92,54 @@ jobs:
             cxx: g++
           - compiler: clang
             cxx: clang++
-    
+
     steps:
-    - name: 📥 Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-        fetch-depth: 0
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
 
-    - name: 🔧 Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y build-essential libboost-all-dev libssl-dev zlib1g-dev
-        if [ "${{ matrix.compiler }}" = "clang" ]; then
-          sudo apt install -y clang
-        fi
+      - name: 🔧 Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential libboost-all-dev libssl-dev zlib1g-dev
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            sudo apt install -y clang
+          fi
 
-    - name: 🧹 Clean previous build
-      run: make clean || true
+      - name: 🧹 Clean previous build
+        run: make clean || true
 
-    - name: 🔨 Build with ${{ matrix.compiler }}
-      run: make CXX=${{ matrix.cxx }}
+      - name: 🔨 Build with ${{ matrix.compiler }}
+        run: make CXX=${{ matrix.cxx }}
 
-    - name: 📊 Count built tools
-      run: |
-        echo "=== Built tools ==="
-        ls -la | grep -E '^[a-zA-Z0-9_-]+$' | grep -v '\.'
-        echo "Total tools: $(ls -1 | grep -E '^[a-zA-Z0-9_-]+$' | grep -v '\.' | wc -l)"
+      - name: 📊 Count built tools
+        run: |
+          echo "=== Built tools ==="
+          ls -la | grep -E '^[a-zA-Z0-9_-]+$' | grep -v '\.'
+          echo "Total tools: $(ls -1 | grep -E '^[a-zA-Z0-9_-]+$' | grep -v '\.' | wc -l)"
 
-    - name: 📦 Archive Linux artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: i2pd-tools-linux-${{ matrix.compiler }}
-        path: |
-          autoconf
-          b33address
-          famtool
-          i2pbase64
-          keygen
-          keyinfo
-          offlinekeys
-          regaddr
-          regaddr_3ld
-          regaddralias
-          routerinfo
-          vain
-          verifyhost
-          x25519
-        retention-days: 30
+      - name: 📦 Archive Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: i2pd-tools-linux-${{ matrix.compiler }}
+          path: |
+            autoconf
+            b33address
+            famtool
+            i2pbase64
+            keygen
+            keyinfo
+            offlinekeys
+            regaddr
+            regaddr_3ld
+            regaddralias
+            routerinfo
+            vain
+            verifyhost
+            x25519
+          retention-days: 30
 
   build-macos:
     name: 🍎 macOS Build
@@ -154,94 +152,98 @@ jobs:
             cxx: g++
           - compiler: clang
             cxx: clang++
-    
+
     steps:
-    - name: 📥 Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-        fetch-depth: 0
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
 
-    - name: 🔧 Install dependencies
-      run: |
-        brew install boost openssl zlib
-        if [ "${{ matrix.compiler }}" = "gcc" ]; then
-          brew install gcc
-        fi
+      - name: 🔧 Install dependencies
+        run: |
+          brew install boost openssl zlib
+          if [ "${{ matrix.compiler }}" = "gcc" ]; then
+            brew install gcc
+          fi
 
-    - name: 🧹 Clean previous build
-      run: make clean || true
+      - name: 🧹 Clean previous build
+        run: make clean || true
 
-    - name: 🔨 Build with ${{ matrix.compiler }}
-      run: make CXX=${{ matrix.cxx }}
+      - name: 🔨 Build with ${{ matrix.compiler }}
+        run: make CXX=${{ matrix.cxx }}
 
-    - name: 📊 Count built tools
-      run: |
-        echo "=== Built tools ==="
-        ls -la | grep -E '^[a-zA-Z0-9_-]+$' | grep -v '\.'
-        echo "Total tools: $(ls -1 | grep -E '^[a-zA-Z0-9_-]+$' | grep -v '\.' | wc -l)"
+      - name: 📊 Count built tools
+        run: |
+          echo "=== Built tools ==="
+          ls -la | grep -E '^[a-zA-Z0-9_-]+$' | grep -v '\.'
+          echo "Total tools: $(ls -1 | grep -E '^[a-zA-Z0-9_-]+$' | grep -v '\.' | wc -l)"
 
-    - name: 📦 Archive macOS artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: i2pd-tools-macos-${{ matrix.compiler }}
-        path: |
-          autoconf
-          b33address
-          famtool
-          i2pbase64
-          keygen
-          keyinfo
-          offlinekeys
-          regaddr
-          regaddr_3ld
-          regaddralias
-          routerinfo
-          vain
-          verifyhost
-          x25519
-        retention-days: 30
+      - name: 📦 Archive macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: i2pd-tools-macos-${{ matrix.compiler }}
+          path: |
+            autoconf
+            b33address
+            famtool
+            i2pbase64
+            keygen
+            keyinfo
+            offlinekeys
+            regaddr
+            regaddr_3ld
+            regaddralias
+            routerinfo
+            vain
+            verifyhost
+            x25519
+          retention-days: 30
 
   build-summary:
     name: 📋 Build Summary
     runs-on: ubuntu-latest
     needs: [build-windows, build-linux, build-macos]
     if: always()
-    
+
     steps:
-    - name: 📊 Build Results Summary
-      run: |
-        echo "## 🔨 Build Results Summary" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "| Platform | Compiler | Status |" >> $GITHUB_STEP_SUMMARY
-        echo "|----------|----------|--------|" >> $GITHUB_STEP_SUMMARY
-        
-        if [ "${{ needs.build-windows.result }}" = "success" ]; then
-          echo "| 🪟 Windows | GCC | ✅ Success |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🪟 Windows | Clang | ✅ Success |" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "| 🪟 Windows | GCC | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🪟 Windows | Clang | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-        fi
-        
-        if [ "${{ needs.build-linux.result }}" = "success" ]; then
-          echo "| 🐧 Linux | GCC | ✅ Success |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🐧 Linux | Clang | ✅ Success |" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "| 🐧 Linux | GCC | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🐧 Linux | Clang | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-        fi
-        
-        if [ "${{ needs.build-macos.result }}" = "success" ]; then
-          echo "| 🍎 macOS | GCC | ✅ Success |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🍎 macOS | Clang | ✅ Success |" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "| 🍎 macOS | GCC | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🍎 macOS | Clang | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-        fi
-        
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
-        echo "- Windows: i2pd-tools-windows-gcc, i2pd-tools-windows-clang" >> $GITHUB_STEP_SUMMARY
-        echo "- Linux: i2pd-tools-linux-gcc, i2pd-tools-linux-clang" >> $GITHUB_STEP_SUMMARY
-        echo "- macOS: i2pd-tools-macos-gcc, i2pd-tools-macos-clang" >> $GITHUB_STEP_SUMMARY
+      - name: 📊 Build Results Summary
+        run: |
+          echo "## 🔨 Build Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform | Compiler | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          
+          for job in windows linux macos; do
+            result=$(jq -r ".${{ needs.build-${job}.result }}" <<< '{}')
+          done
+
+          if [ "${{ needs.build-windows.result }}" = "success" ]; then
+            echo "| 🪟 Windows | GCC | ✅ Success |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🪟 Windows | Clang | ✅ Success |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| 🪟 Windows | GCC | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🪟 Windows | Clang | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.build-linux.result }}" = "success" ]; then
+            echo "| 🐧 Linux | GCC | ✅ Success |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🐧 Linux | Clang | ✅ Success |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| 🐧 Linux | GCC | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🐧 Linux | Clang | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.build-macos.result }}" = "success" ]; then
+            echo "| 🍎 macOS | GCC | ✅ Success |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🍎 macOS | Clang | ✅ Success |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| 🍎 macOS | GCC | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🍎 macOS | Clang | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows: i2pd-tools-windows-gcc, i2pd-tools-windows-clang" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux: i2pd-tools-linux-gcc, i2pd-tools-linux-clang" >> $GITHUB_STEP_SUMMARY
+          echo "- macOS: i2pd-tools-macos-gcc, i2pd-tools-macos-clang" >> $GITHUB_STEP_SUMMARY

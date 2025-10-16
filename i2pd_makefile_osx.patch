@@ -1,0 +1,32 @@
+diff --git a/Makefile.osx b/Makefile.osx
+index 53a1eb053..1fa9800cc 100644
+--- a/Makefile.osx
++++ b/Makefile.osx
+@@ -1,13 +1,24 @@
+ CXX = clang++
+ CXXFLAGS := ${CXX_DEBUG} -Wall -std=c++17
+-INCFLAGS = -I/usr/local/include
++# Check if we're on Apple Silicon (Homebrew in /opt/homebrew) or Intel (Homebrew in /usr/local)
++ifeq ($(shell test -d /opt/homebrew && echo "true"),true)
++	INCFLAGS = -I/opt/homebrew/opt/openssl@3/include -I/opt/homebrew/include
++	LDFLAGS := -Wl,-rpath,/opt/homebrew/opt/openssl@3/lib -Wl,-rpath,/opt/homebrew/lib -L/opt/homebrew/opt/openssl@3/lib -L/opt/homebrew/lib
++else
++	INCFLAGS = -I/usr/local/include
++	LDFLAGS := -Wl,-rpath,/usr/local/lib -L/usr/local/lib
++endif
+ DEFINES := -DMAC_OSX
+-LDFLAGS := -Wl,-rpath,/usr/local/lib -L/usr/local/lib
+ LDFLAGS += -Wl,-dead_strip
+ LDFLAGS += -Wl,-dead_strip_dylibs
+ 
+ ifeq ($(USE_STATIC),yes)
+-	LDLIBS = -lz /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a /usr/local/lib/libboost_system.a /usr/local/lib/libboost_filesystem.a /usr/local/lib/libboost_program_options.a -lpthread
++	# Check if we're on Apple Silicon (Homebrew in /opt/homebrew) or Intel (Homebrew in /usr/local)
++	ifeq ($(shell test -d /opt/homebrew && echo "true"),true)
++		LDLIBS = -lz /opt/homebrew/opt/openssl@3/lib/libssl.a /opt/homebrew/opt/openssl@3/lib/libcrypto.a /opt/homebrew/lib/libboost_program_options.a -lpthread
++	else
++		LDLIBS = -lz /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a /usr/local/lib/libboost_system.a /usr/local/lib/libboost_filesystem.a /usr/local/lib/libboost_program_options.a -lpthread
++	endif
+ else
+ 	LDLIBS = -lz -lssl -lcrypto -lboost_program_options -lpthread
+ endif
