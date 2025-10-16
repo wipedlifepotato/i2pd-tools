@@ -25,7 +25,7 @@ else
 # Win32
 	CXXFLAGS += -Os -fPIC -msse
 	DEFINES += -DWIN32_LEAN_AND_MEAN
-	BOOST_SUFFIX = -mt
+	BOOST_SUFFIX = # -mt
 endif
 
 ifeq ($(UNAME),Linux)
