@@ -11,30 +11,58 @@ Notice: git submodules are used so make sure to clone this repository recursivel
 ### Dependencies
 
 * boost chrono
-
 * boost date-time
-
 * boost filesystem
-
 * boost program-options
-
 * libssl
-
 * zlib1g
 
-  (run `dependencies.sh`)
+### Windows (MSYS2)
+```bash
+# Install MSYS2 from https://www.msys2.org/
+pacman -S mingw-w64-x86_64-toolchain
+pacman -S mingw-w64-x86_64-boost
+pacman -S mingw-w64-x86_64-openssl
+pacman -S mingw-w64-x86_64-zlib
+pacman -S make
+```
+
+### Linux (Ubuntu/Debian)
+```bash
+sudo apt update
+sudo apt install build-essential libboost-all-dev libssl-dev zlib1g-dev
+```
+
+### macOS (Homebrew)
+```bash
+brew install boost openssl zlib
+```
 
 ### Building
 
 ```sh
-git submodule init && git submodule update
-git submodule update --init
-git pull --recurse-submodules
+git clone --recursive https://github.com/wipedlifepotato/i2pd-tools
+cd i2pd-tools
+git submodule update --init --recursive
 make
 # optional, for small output
 # make stripall
 # make builddir
 ```
+
+### Build with Different Compilers
+
+#### GCC (Default)
+```bash
+make CXX=g++
+```
+
+#### Clang
+```bash
+make CXX=clang++
+```
+
+For detailed build instructions, see [BUILD.md](BUILD.md).
 
 ## Tools included
 
