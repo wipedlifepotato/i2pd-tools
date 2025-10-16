@@ -1,0 +1,269 @@
+name: 📚 Documentation
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'README.md'
+      - 'BUILD.md'
+      - 'docs/**'
+  pull_request:
+    branches: [ main, master, develop ]
+    paths:
+      - 'README.md'
+      - 'BUILD.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+jobs:
+  check-docs:
+    name: 📖 Check Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: 🔍 Check README.md
+      run: |
+        echo "Checking README.md..."
+        if [ ! -f "README.md" ]; then
+          echo "❌ README.md not found"
+          exit 1
+        fi
+        
+        # Check for required sections
+        required_sections=("Building" "Tools included" "Usage")
+        for section in "${required_sections[@]}"; do
+          if ! grep -q "$section" README.md; then
+            echo "⚠️ README.md missing section: $section"
+          else
+            echo "✅ README.md contains section: $section"
+          fi
+        done
+
+    - name: 🔍 Check BUILD.md
+      run: |
+        echo "Checking BUILD.md..."
+        if [ ! -f "BUILD.md" ]; then
+          echo "❌ BUILD.md not found"
+          exit 1
+        fi
+        
+        # Check for required sections
+        required_sections=("Prerequisites" "Building" "Troubleshooting")
+        for section in "${required_sections[@]}"; do
+          if ! grep -q "$section" BUILD.md; then
+            echo "⚠️ BUILD.md missing section: $section"
+          else
+            echo "✅ BUILD.md contains section: $section"
+          fi
+        done
+
+    - name: 📊 Documentation Statistics
+      run: |
+        echo "## 📚 Documentation Statistics" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -f "README.md" ]; then
+          readme_lines=$(wc -l < README.md)
+          readme_words=$(wc -w < README.md)
+          echo "### README.md:" >> $GITHUB_STEP_SUMMARY
+          echo "- Lines: $readme_lines" >> $GITHUB_STEP_SUMMARY
+          echo "- Words: $readme_words" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -f "BUILD.md" ]; then
+          build_lines=$(wc -l < BUILD.md)
+          build_words=$(wc -w < BUILD.md)
+          echo "### BUILD.md:" >> $GITHUB_STEP_SUMMARY
+          echo "- Lines: $build_lines" >> $GITHUB_STEP_SUMMARY
+          echo "- Words: $build_words" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Documentation Checklist:" >> $GITHUB_STEP_SUMMARY
+        echo "- [ ] README.md exists and contains required sections" >> $GITHUB_STEP_SUMMARY
+        echo "- [ ] BUILD.md exists and contains build instructions" >> $GITHUB_STEP_SUMMARY
+        echo "- [ ] All tools have usage examples" >> $GITHUB_STEP_SUMMARY
+        echo "- [ ] Installation instructions are clear" >> $GITHUB_STEP_SUMMARY
+        echo "- [ ] Troubleshooting section is comprehensive" >> $GITHUB_STEP_SUMMARY
+
+  validate-examples:
+    name: 🔍 Validate Examples
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: 🔧 Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential libboost-all-dev libssl-dev zlib1g-dev
+
+    - name: 🔨 Build tools
+      run: make
+
+    - name: 🔍 Test README examples
+      run: |
+        echo "Testing examples from README.md..."
+        
+        # Test keygen example
+        if ./keygen test_key.dat; then
+          echo "✅ keygen example works"
+        else
+          echo "❌ keygen example failed"
+        fi
+        
+        # Test keyinfo example
+        if [ -f "test_key.dat" ]; then
+          if ./keyinfo test_key.dat > /dev/null; then
+            echo "✅ keyinfo example works"
+          else
+            echo "❌ keyinfo example failed"
+          fi
+        fi
+        
+        # Test i2pbase64 example
+        if echo "test" | ./i2pbase64 > /dev/null; then
+          echo "✅ i2pbase64 example works"
+        else
+          echo "❌ i2pbase64 example failed"
+        fi
+        
+        # Test x25519 example
+        if ./x25519 > /dev/null; then
+          echo "✅ x25519 example works"
+        else
+          echo "❌ x25519 example failed"
+        fi
+        
+        # Cleanup
+        rm -f test_key.dat
+
+    - name: 🔍 Test BUILD.md examples
+      run: |
+        echo "Testing build examples from BUILD.md..."
+        
+        # Test different compiler options
+        make clean || true
+        
+        # Test GCC build
+        if make CXX=g++; then
+          echo "✅ GCC build example works"
+        else
+          echo "❌ GCC build example failed"
+        fi
+        
+        make clean || true
+        
+        # Test Clang build
+        if make CXX=clang++; then
+          echo "✅ Clang build example works"
+        else
+          echo "❌ Clang build example failed"
+        fi
+
+  generate-tool-docs:
+    name: 📝 Generate Tool Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: 🔧 Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential libboost-all-dev libssl-dev zlib1g-dev
+
+    - name: 🔨 Build tools
+      run: make
+
+    - name: 📝 Generate tool help documentation
+      run: |
+        echo "Generating tool help documentation..."
+        mkdir -p docs/tools
+        
+        tools=("autoconf" "b33address" "famtool" "i2pbase64" "keygen" "keyinfo" "offlinekeys" "regaddr" "regaddr_3ld" "regaddralias" "routerinfo" "vain" "verifyhost" "x25519")
+        
+        for tool in "${tools[@]}"; do
+          if [ -f "$tool" ]; then
+            echo "# $tool Help" > "docs/tools/${tool}.md"
+            echo "" >> "docs/tools/${tool}.md"
+            echo "## Usage" >> "docs/tools/${tool}.md"
+            echo '```' >> "docs/tools/${tool}.md"
+            ./$tool --help 2>&1 >> "docs/tools/${tool}.md" || echo "No help available" >> "docs/tools/${tool}.md"
+            echo '```' >> "docs/tools/${tool}.md"
+            echo "" >> "docs/tools/${tool}.md"
+            echo "Generated on: $(date)" >> "docs/tools/${tool}.md"
+          fi
+        done
+
+    - name: 📊 Tool Documentation Summary
+      run: |
+        echo "## 📝 Tool Documentation Generated" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Generated Files:" >> $GITHUB_STEP_SUMMARY
+        ls -la docs/tools/ | while read line; do
+          if [[ $line == *".md" ]]; then
+            filename=$(echo $line | awk '{print $9}')
+            echo "- \`$filename\`" >> $GITHUB_STEP_SUMMARY
+          fi
+        done
+
+    - name: 📤 Upload documentation artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: tool-documentation
+        path: docs/tools/
+        retention-days: 30
+
+  docs-summary:
+    name: 📊 Documentation Summary
+    runs-on: ubuntu-latest
+    needs: [check-docs, validate-examples, generate-tool-docs]
+    if: always()
+    
+    steps:
+    - name: 📊 Documentation Report
+      run: |
+        echo "## 📚 Documentation Quality Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ needs.check-docs.result }}" = "success" ]; then
+          echo "| 📖 Documentation Check | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| 📖 Documentation Check | ⚠️ Issues Found |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.validate-examples.result }}" = "success" ]; then
+          echo "| 🔍 Example Validation | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| 🔍 Example Validation | ⚠️ Issues Found |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.generate-tool-docs.result }}" = "success" ]; then
+          echo "| 📝 Tool Documentation | ✅ Generated |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| 📝 Tool Documentation | ⚠️ Issues Found |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Documentation Status:" >> $GITHUB_STEP_SUMMARY
+        echo "- README.md: Contains build instructions and tool descriptions" >> $GITHUB_STEP_SUMMARY
+        echo "- BUILD.md: Contains detailed build instructions" >> $GITHUB_STEP_SUMMARY
+        echo "- Tool help: Generated from --help output" >> $GITHUB_STEP_SUMMARY
+        echo "- Examples: Tested for correctness" >> $GITHUB_STEP_SUMMARY

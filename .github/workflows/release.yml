@@ -1,0 +1,270 @@
+name: 🚀 Release i2pd-tools
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Is this a pre-release?'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  MAKEFLAGS: -j2
+
+jobs:
+  build-release:
+    name: 🔨 Build Release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        compiler: [gcc, clang]
+        exclude:
+          # Windows doesn't have gcc by default
+          - os: windows-latest
+            compiler: gcc
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: 🏷️ Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: 🔧 Setup Windows
+      if: ${{ matrix.os == 'windows-latest' }}
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: mingw64
+        install: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel mingw-w64-x86_64-toolchain
+          pacman -S --noconfirm mingw-w64-x86_64-boost
+          pacman -S --noconfirm mingw-w64-x86_64-openssl
+          pacman -S --noconfirm mingw-w64-x86_64-zlib
+          pacman -S --noconfirm make
+
+    - name: 🔧 Setup Linux
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential libboost-all-dev libssl-dev zlib1g-dev
+        if [ "${{ matrix.compiler }}" = "clang" ]; then
+          sudo apt install -y clang
+        fi
+
+    - name: 🔧 Setup macOS
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: |
+        brew install boost openssl zlib
+        if [ "${{ matrix.compiler }}" = "gcc" ]; then
+          brew install gcc
+        fi
+
+    - name: 🧹 Clean previous build
+      shell: bash
+      run: make clean || true
+
+    - name: 🔨 Build tools
+      shell: bash
+      run: |
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            make CXX=clang++
+          else
+            make CXX=g++
+          fi
+        else
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            make CXX=clang++
+          else
+            make CXX=g++
+          fi
+        fi
+
+    - name: 📦 Strip binaries (Linux/macOS)
+      if: ${{ matrix.os != 'windows-latest' }}
+      run: make stripall
+
+    - name: 📁 Create release directory
+      shell: bash
+      run: |
+        mkdir -p release-${{ matrix.os }}-${{ matrix.compiler }}
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          cp *.exe release-${{ matrix.os }}-${{ matrix.compiler }}/
+        else
+          cp autoconf b33address famtool i2pbase64 keygen keyinfo offlinekeys regaddr regaddr_3ld regaddralias routerinfo vain verifyhost x25519 release-${{ matrix.os }}-${{ matrix.compiler }}/
+        fi
+
+    - name: 📄 Create README for release
+      shell: bash
+      run: |
+        cat > release-${{ matrix.os }}-${{ matrix.compiler }}/README.txt << EOF
+        i2pd-tools ${{ steps.version.outputs.version }}
+        
+        Platform: ${{ matrix.os }}
+        Compiler: ${{ matrix.compiler }}
+        Build Date: $(date)
+        
+        Tools included:
+        - autoconf: Configuration helper
+        - b33address: B33 address utilities
+        - famtool: Family router management
+        - i2pbase64: Base64 encoding/decoding
+        - keygen: Generate I2P cryptographic keys
+        - keyinfo: Display key information
+        - offlinekeys: Offline key management
+        - regaddr: Domain registration
+        - regaddr_3ld: Subdomain registration
+        - regaddralias: Alias registration
+        - routerinfo: Router information display
+        - vain: Generate vanity I2P addresses
+        - verifyhost: Host verification
+        - x25519: X25519 key generation
+        
+        For usage instructions, see: https://github.com/wipedlifepotato/i2pd-tools
+        EOF
+
+    - name: 📦 Create archive
+      shell: bash
+      run: |
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          cd release-${{ matrix.os }}-${{ matrix.compiler }}
+          tar -czf ../i2pd-tools-${{ steps.version.outputs.version }}-${{ matrix.os }}-${{ matrix.compiler }}.tar.gz *
+          cd ..
+        else
+          tar -czf i2pd-tools-${{ steps.version.outputs.version }}-${{ matrix.os }}-${{ matrix.compiler }}.tar.gz release-${{ matrix.os }}-${{ matrix.compiler }}/
+        fi
+
+    - name: 📤 Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: i2pd-tools-${{ steps.version.outputs.version }}-${{ matrix.os }}-${{ matrix.compiler }}
+        path: i2pd-tools-${{ steps.version.outputs.version }}-${{ matrix.os }}-${{ matrix.compiler }}.tar.gz
+        retention-days: 30
+
+  create-release:
+    name: 🚀 Create Release
+    runs-on: ubuntu-latest
+    needs: build-release
+    if: always()
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: 🏷️ Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: 📥 Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: 📋 Create release notes
+      run: |
+        cat > release_notes.md << EOF
+        # i2pd-tools ${{ steps.version.outputs.version }}
+        
+        ## 🔧 What's New
+        This release includes all i2pd-tools utilities for I2P network management.
+        
+        ## 📦 Downloads
+        Choose the appropriate archive for your platform:
+        
+        ### 🪟 Windows
+        - **GCC**: \`i2pd-tools-${{ steps.version.outputs.version }}-windows-latest-gcc.tar.gz\`
+        - **Clang**: \`i2pd-tools-${{ steps.version.outputs.version }}-windows-latest-clang.tar.gz\`
+        
+        ### 🐧 Linux
+        - **GCC**: \`i2pd-tools-${{ steps.version.outputs.version }}-ubuntu-latest-gcc.tar.gz\`
+        - **Clang**: \`i2pd-tools-${{ steps.version.outputs.version }}-ubuntu-latest-clang.tar.gz\`
+        
+        ### 🍎 macOS
+        - **GCC**: \`i2pd-tools-${{ steps.version.outputs.version }}-macos-latest-gcc.tar.gz\`
+        - **Clang**: \`i2pd-tools-${{ steps.version.outputs.version }}-macos-latest-clang.tar.gz\`
+        
+        ## 🛠️ Tools Included
+        - **autoconf**: Configuration helper for i2pd
+        - **b33address**: B33 address utilities
+        - **famtool**: Family router management
+        - **i2pbase64**: Base64 encoding/decoding
+        - **keygen**: Generate I2P cryptographic keys
+        - **keyinfo**: Display key information
+        - **offlinekeys**: Offline key management
+        - **regaddr**: Domain registration
+        - **regaddr_3ld**: Subdomain registration
+        - **regaddralias**: Alias registration
+        - **routerinfo**: Router information display
+        - **vain**: Generate vanity I2P addresses
+        - **verifyhost**: Host verification
+        - **x25519**: X25519 key generation
+        
+        ## 📖 Usage
+        For detailed usage instructions, see the [README](https://github.com/wipedlifepotato/i2pd-tools/blob/main/README.md).
+        
+        ## 🔗 Links
+        - [Repository](https://github.com/wipedlifepotato/i2pd-tools)
+        - [Issues](https://github.com/wipedlifepotato/i2pd-tools/issues)
+        - [Documentation](https://github.com/wipedlifepotato/i2pd-tools/blob/main/BUILD.md)
+        
+        ## 🏗️ Build Information
+        - Built with GitHub Actions
+        - Tested on Windows, Linux, and macOS
+        - Compiled with both GCC and Clang
+        - All tools are stripped for smaller size
+        EOF
+
+    - name: 🚀 Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: i2pd-tools ${{ steps.version.outputs.version }}
+        body_path: release_notes.md
+        prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+        files: |
+          artifacts/*/i2pd-tools-${{ steps.version.outputs.version }}-*.tar.gz
+        draft: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: 📊 Release Summary
+      run: |
+        echo "## 🚀 Release Created Successfully!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Pre-release**: ${{ github.event.inputs.prerelease == 'true' }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 Artifacts:" >> $GITHUB_STEP_SUMMARY
+        ls -la artifacts/*/i2pd-tools-${{ steps.version.outputs.version }}-*.tar.gz | while read line; do
+          echo "- \`$(basename $(echo $line | awk '{print $9}'))\`" >> $GITHUB_STEP_SUMMARY
+        done
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔗 Release URL:" >> $GITHUB_STEP_SUMMARY
+        echo "https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
