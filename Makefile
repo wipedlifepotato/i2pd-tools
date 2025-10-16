@@ -12,6 +12,7 @@ INCFLAGS := -I$(LIBI2PD_PATH) -I$(LIBI2PD_CLIENT_PATH)
 DEFINES := -DOPENSSL_SUPPRESS_DEPRECATED
 
 LDFLAGS := 
+BOOST_SUFFIX :=
 LDLIBS := $(I2PD_PATH)/$(I2PD_LIB) -lboost_program_options$(BOOST_SUFFIX) -lssl -lcrypto -lz
 
 ifeq ($(UNAME),Linux)
@@ -40,10 +41,10 @@ else
     # Windows
     CXXFLAGS += -Os -fPIC -msse
     DEFINES += -DWIN32_LEAN_AND_MEAN
-    LDFLAGS += -L/clang64/lib
-    INCFLAGS += -I/clang64/include
-    BOOST_SUFFIX =
-    LDLIBS += -lwsock32 -lws2_32 -liphlpapi -lpthread
+    LDFLAGS += -L/mingw64/lib
+    INCFLAGS += -I/mingw64/include
+    BOOST_SUFFIX = -mt
+    LDLIBS += -lwsock32 -lws2_32 -liphlpapi -lpthread -lboost_filesystem$(BOOST_SUFFIX)
 endif
 
 # -------------------------
