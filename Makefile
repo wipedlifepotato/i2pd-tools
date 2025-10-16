@@ -25,7 +25,9 @@ else
 # Win32
 	CXXFLAGS += -Os -fPIC -msse
 	DEFINES += -DWIN32_LEAN_AND_MEAN
-	BOOST_SUFFIX = # -mt
+	LDFLAGS += -L/clang64/lib
+	INCFLAGS += -I/clang64/include
+	BOOST_SUFFIX =
 endif
 
 ifeq ($(UNAME),Linux)
