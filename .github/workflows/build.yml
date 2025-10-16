@@ -80,6 +80,8 @@ jobs:
         shell: msys2 {0}
         run: |
           cd "${GITHUB_WORKSPACE}"
+          export CC=clang
+          export CXX=clang++
           make -j$(nproc)
           make stripall
           make builddir
