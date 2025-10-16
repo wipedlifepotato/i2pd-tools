@@ -1,0 +1,48 @@
+diff --git a/Makefile b/Makefile
+index e8ccd4f..102fc07 100755
+--- a/Makefile
++++ b/Makefile
+@@ -12,7 +12,7 @@ INCFLAGS = -I$(LIBI2PD_PATH) -I$(LIBI2PD_CLIENT_PATH)
+ DEFINES = -DOPENSSL_SUPPRESS_DEPRECATED
+ 
+ LDFLAGS = 
+-LDLIBS = $(I2PD_PATH)/$(I2PD_LIB) -lboost_system$(BOOST_SUFFIX) -lboost_program_options$(BOOST_SUFFIX) -lssl -lcrypto -lz 
++LDLIBS = $(I2PD_PATH)/$(I2PD_LIB) -lboost_program_options$(BOOST_SUFFIX) -lssl -lcrypto -lz 
+ 
+ 
+ ifeq ($(UNAME),Linux)
+@@ -32,8 +32,14 @@ ifeq ($(UNAME),Linux)
+ 	LDLIBS += -lrt -lpthread
+ else ifeq ($(UNAME),Darwin)
+ 	LDLIBS += -lpthread
+-	LDFLAGS += -L/usr/local/opt/openssl@1.1/lib -L/usr/local/lib
+-	INCFLAGS += -I/usr/local/opt/openssl@1.1/include -I/usr/local/include
++	# Check if we're on Apple Silicon (Homebrew in /opt/homebrew) or Intel (Homebrew in /usr/local)
++	ifeq ($(shell test -d /opt/homebrew && echo "true"),true)
++		LDFLAGS += -L/opt/homebrew/opt/openssl@3/lib -L/opt/homebrew/lib
++		INCFLAGS += -I/opt/homebrew/opt/openssl@3/include -I/opt/homebrew/include
++	else
++		LDFLAGS += -L/usr/local/opt/openssl@1.1/lib -L/usr/local/lib
++		INCFLAGS += -I/usr/local/opt/openssl@1.1/include -I/usr/local/include
++	endif
+ else ifeq ($(UNAME),FreeBSD)
+ 	LDLIBS += -lthr -lpthread
+ 	LDFLAGS += -L/usr/local/lib
+@@ -53,7 +59,7 @@ autoconf: autoconf.o $(I2PD_LIB)
+ 	$(CXX) -o autoconf $(DEFINES) $(LDFLAGS) autoconf.o $(LDLIBS)
+ 
+ routerinfo: routerinfo.o $(I2PD_LIB)
+-	$(CXX) -o routerinfo $(LDFLAGS) routerinfo.o $(LDLIBS) -latomic
++	$(CXX) -o routerinfo $(LDFLAGS) routerinfo.o $(LDLIBS)
+ 
+ keygen: keygen.o $(I2PD_LIB)
+ 	$(CXX) -o keygen $(DEFINES) $(LDFLAGS) keygen.o $(LDLIBS)
+@@ -62,7 +68,7 @@ keyinfo: keyinfo.o $(I2PD_LIB)
+ 	$(CXX) -o keyinfo $(DEFINES) $(LDFLAGS) keyinfo.o $(LDLIBS)
+ 
+ famtool: famtool.o $(I2PD_LIB)
+-	$(CXX) -o famtool $(DEFINES) $(LDFLAGS) famtool.o $(LDLIBS) -latomic
++	$(CXX) -o famtool $(DEFINES) $(LDFLAGS) famtool.o $(LDLIBS)
+ 
+ regaddr: regaddr.o $(I2PD_LIB)
+ 	$(CXX) -o regaddr $(DEFINES) $(LDFLAGS) regaddr.o $(LDLIBS)
